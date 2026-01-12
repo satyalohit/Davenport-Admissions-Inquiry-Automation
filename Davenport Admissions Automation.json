@@ -1,0 +1,443 @@
+{
+  "name": "Davenport Admissions Automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "67a6d323-b717-45f0-96f3-ec8b1ccd31f8",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE",
+          "mode": "list",
+          "cachedResultName": "Davenport University - Student Inquiry (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 933262930,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE/edit#gid=933262930"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "898c348c-867d-4b4e-86b8-3e4a2a25e492",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "k0BD0sdqTn8YwjDl",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a Davenport University Admissions Assistant. A student named {{ $json.Name }} is asking: \"{{ $json.Message }}\". Please provide a helpful response based on Davenport's student-centric values."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        704,
+        -208
+      ],
+      "id": "08a27671-829a-4885-8e46-c762a36baae1",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "dG7dAjiSBfv6mG4z",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Google Sheets Trigger').item.json.Email }}",
+        "subject": "Update from Davenport University Admissions",
+        "emailType": "text",
+        "message": "={{ $('Message a model').item.json.output[0].content[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "11f6d63f-e9e3-4e82-bc63-cffc2cd95f02",
+      "name": "Send a message",
+      "webhookId": "af8b65ba-afcf-465e-b26e-1c4f5667c47e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "65RNP10bXXtHYVKK",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "nsatya3839@gmail.com",
+          "mode": "id",
+          "__regex": "(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)"
+        },
+        "start": "={{ $now.plus(2, 'days').set({hour: 10, minute: 0}) }}",
+        "end": "={{ $now.plus(2, 'days').set({hour: 10, minute: 30}) }}",
+        "additionalFields": {
+          "description": "={{ $('Google Sheets Trigger').item.json.Name }}{{ $('Google Sheets Trigger').item.json.Email }}",
+          "summary": "=Admissions Follow-up: {{ $node[\"Google Sheets Trigger\"].json[\"Name\"] }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "26129416-3f3c-4ad3-8b36-a488a6159c28",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "RoLbXg8WOtmTZDVr",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Mode: Run Once For Each Item | Language: JavaScript\n\nconst message = ($json.Message || \"\").toLowerCase();\nconst urgentKeywords = ['deadline', 'urgent', 'asap', 'help', 'immediately', 'scholarship'];\n\nconst isUrgent = urgentKeywords.some(word => message.includes(word));\n$json.priority = isUrgent ? 'High' : 'Normal';\n\n// Add required fields for row lookup + AI answer update\n$json.timestamp = $json.Timestamp;\n$json.question = $json.Message;\n$json.email = $json.Email || \"\";\n\nreturn $json;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "f04377e2-5b1f-4b08-be98-947eede1b3bd",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE",
+          "mode": "list",
+          "cachedResultName": "Davenport University - Student Inquiry (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 933262930,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE/edit#gid=933262930"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Time Stamp",
+              "lookupValue": "={{ $('Code in JavaScript').item.json['Time Stamp'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "25290b27-4b9e-4fc9-8f7f-cee2055e9d67",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fHHDobUNUY0bS4dF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE",
+          "mode": "list",
+          "cachedResultName": "Davenport University - Student Inquiry (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 933262930,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1rWZYhSing4-QxPGFaAhwZWOPjpWE4Fzcznu4PEcSMVE/edit#gid=933262930"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Time Stamp": "={{ $json['Time Stamp'] }}",
+            "Name": "={{ $json.Name }}",
+            "Email": "={{ $json.Email }}",
+            "Degree": "={{ $json.Degree }}",
+            "Message": "={{ $json.Message }}",
+            "DavenPort_Response": "={{ $('Message a model').item.json.output[0].content[0].text }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Time Stamp",
+              "displayName": "Time Stamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Degree",
+              "displayName": "Degree",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DavenPort_Response",
+              "displayName": "DavenPort_Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1808,
+        0
+      ],
+      "id": "9abcd31c-6617-4b3a-8e4a-3d1d5dbb995a",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fHHDobUNUY0bS4dF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Google Sheets Trigger').item.json.Email }}",
+        "additionalFields": {
+          "degree": "={{ $('Google Sheets Trigger').item.json.Degree }}",
+          "firstName": "={{ $('Google Sheets Trigger').item.json.Name }}",
+          "message": "=Student Question: {{ $node[\"Google Sheets Trigger\"].json[\"Message\"] }} AI Response:{{ $json.output[0].content[0].text }} Priority{{ $('Code in JavaScript').item.json.priority }}: "
+        },
+        "options": {
+          "resolveData": false
+        }
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        1056,
+        -208
+      ],
+      "id": "bbad81db-2b93-4ac4-8ed1-cace1fce7684",
+      "name": "Create or update a contact",
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "cRebM0lQr6t9ksBu",
+          "name": "HubSpot account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        []
+      ]
+    },
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Create or update a contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or update a contact": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "c271c9dc-434b-48a6-84fe-1d5acabd9172",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8f8ab0268276517470908b1329b9c46f94356bd3883c867de7765f1fc3d82316"
+  },
+  "id": "2FygqfGRx5mdv2FkIQjF1",
+  "tags": []
+}
